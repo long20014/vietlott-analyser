@@ -6,3 +6,6 @@ frontend/dist/
 .env
 *.env.local
 .DS_Store
+
+PR_DESCRIPTION.md
+backend/temp/
