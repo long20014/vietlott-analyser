@@ -8,3 +8,4 @@ frontend/dist/
 .DS_Store
 
 PR_DESCRIPTION.md
+backend/temp/
