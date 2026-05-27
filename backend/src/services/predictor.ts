@@ -18,10 +18,21 @@ export interface Top10PredictResult {
   generatedAt: string;
 }
 
+const DATA_FILE    = path.resolve(__dirname, '../../data/power-55-result.json');
 const ANALYSE_FILE = path.resolve(__dirname, '../../data/power-55-analyse.json');
 const TOP10_FILE   = path.resolve(__dirname, '../../temp/power-55-top10-predict.json');
 
-function weightedSampleWithoutReplacement(weights: Map<number, number>, k: number): number[] {
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s += 0x6d2b79f5;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+}
+
+function weightedSampleWithoutReplacement(weights: Map<number, number>, k: number, rand: () => number): number[] {
   const pool = new Map(weights);
   const selected: number[] = [];
 
@@ -29,7 +40,7 @@ function weightedSampleWithoutReplacement(weights: Map<number, number>, k: numbe
     let total = 0;
     for (const w of pool.values()) total += w;
 
-    const threshold = Math.random() * total;
+    const threshold = rand() * total;
     let cumulative = 0;
     let chosen = -1;
 
@@ -62,8 +73,9 @@ function scoreCombination(
   ratioByNumber: Map<number, number>,
   ratioByConsecPair: Map<string, number>,
   ratioByPseudoPair: Map<string, number>,
+  recentNumbers: Set<number>,
 ): PredictionCandidate {
-  const numberScore = numbers.reduce((sum, n) => sum + (ratioByNumber.get(n) ?? 0), 0) / numbers.length;
+  const numberScore = numbers.reduce((sum, n) => sum + (recentNumbers.has(n) ? 0 : (ratioByNumber.get(n) ?? 0)), 0) / numbers.length;
 
   let rangeSum = 0;
   const rangesCovered: string[] = [];
@@ -109,7 +121,7 @@ function scoreCombination(
   };
 }
 
-export function generateTop10Predictions(analysis: AnalyseResult): Top10PredictResult {
+export function generateTop10Predictions(analysis: AnalyseResult, recentNumbers: Set<number>): Top10PredictResult {
   const ratioByNumber = new Map<number, number>(
     analysis.numberStats.map(({ number, ratio }) => [number, ratio]),
   );
@@ -120,29 +132,37 @@ export function generateTop10Predictions(analysis: AnalyseResult): Top10PredictR
     analysis.pseudoStats.map(({ pair, ratio }) => [`${pair[0]}-${pair[1]}`, ratio]),
   );
   const baseWeights = new Map<number, number>(
-    analysis.numberStats.map(({ number, ratio }) => [number, ratio]),
+    analysis.numberStats.map(({ number, ratio }) => [
+      number,
+      recentNumbers.has(number) ? ratio * 0.1 : ratio,
+    ]),
   );
 
+  const rand = mulberry32(analysis.totalDraws);
   const seen = new Map<string, PredictionCandidate>();
   for (let i = 0; i < 100_000; i++) {
-    const nums = weightedSampleWithoutReplacement(baseWeights, 7);
+    const nums = weightedSampleWithoutReplacement(baseWeights, 7, rand);
     const key = [...nums].sort((a, b) => a - b).join(',');
     if (seen.has(key)) continue;
-    seen.set(key, scoreCombination(nums, analysis, ratioByNumber, ratioByConsecPair, ratioByPseudoPair));
+    seen.set(key, scoreCombination(nums, analysis, ratioByNumber, ratioByConsecPair, ratioByPseudoPair, recentNumbers));
   }
 
   const top10 = [...seen.values()]
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .sort((a, b) => a.score - b.score);
+    .slice(0, 10);
 
   return { predictions: top10, generatedAt: new Date().toISOString() };
 }
 
 export async function exportTop10Predictions(): Promise<Top10PredictResult> {
-  const raw = await fs.readFile(ANALYSE_FILE, 'utf-8');
-  const analysis = JSON.parse(raw) as AnalyseResult;
-  const result = generateTop10Predictions(analysis);
+  const [analyseRaw, resultsRaw] = await Promise.all([
+    fs.readFile(ANALYSE_FILE, 'utf-8'),
+    fs.readFile(DATA_FILE, 'utf-8'),
+  ]);
+  const analysis = JSON.parse(analyseRaw) as AnalyseResult;
+  const { results } = JSON.parse(resultsRaw) as { results: { numbers: number[] }[] };
+  const recentNumbers = new Set(results.slice(0, 5).flatMap((r) => r.numbers));
+  const result = generateTop10Predictions(analysis, recentNumbers);
   await fs.mkdir(path.dirname(TOP10_FILE), { recursive: true });
   await fs.writeFile(TOP10_FILE, JSON.stringify(result, null, 2), 'utf-8');
   return result;
