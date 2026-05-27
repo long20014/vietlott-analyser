@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { crawlPower55, exportResults } from '../services/crawler';
 import { analyseResults, exportAnalysis } from '../services/analyser';
-import { exportPrediction } from '../services/predictor';
+import { exportTop10Predictions } from '../services/predictor';
 
 const DATA_FILE = path.resolve(__dirname, '../../data/power-55-result.json');
 
@@ -45,11 +45,12 @@ router.post('/analyse/export', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/predict/export — run prediction and export to power-55-predict.json
-router.post('/predict/export', async (_req: Request, res: Response) => {
+
+// POST /api/predict/top10 — score 100k candidates and return top 10 by composite score
+router.post('/predict/top10', async (_req: Request, res: Response) => {
   try {
-    const { file, predictedNumbers, generatedAt } = await exportPrediction();
-    res.json({ success: true, file, predictedNumbers, generatedAt });
+    const result = await exportTop10Predictions();
+    res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ success: false, error: message });

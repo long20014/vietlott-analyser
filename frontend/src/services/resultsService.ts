@@ -60,11 +60,6 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return resp.json();
 }
 
-export interface PredictResult {
-  predictedNumbers: number[];
-  generatedAt: string;
-}
-
 export function getResults(): Promise<ResultsResponse> {
   return apiFetch<ResultsResponse>('/api/results');
 }
@@ -73,6 +68,23 @@ export function getAnalysis(): Promise<AnalyseResult> {
   return apiFetch<AnalyseResult>('/api/analyse');
 }
 
-export function getPrediction(): Promise<PredictResult> {
-  return apiFetch<PredictResult>('/api/predict/export', { method: 'POST' });
+export interface PredictionCandidate {
+  numbers: number[];
+  score: number;
+  numberScore: number;
+  rangeScore: number;
+  pairScore: number;
+  rangesCovered: string[];
+  consecutivePairs: [number, number][];
+  pseudoPairs: [number, number][];
+}
+
+export interface Top10PredictResult {
+  predictions: PredictionCandidate[];
+  generatedAt: string;
+}
+
+
+export function getTop10Predictions(): Promise<Top10PredictResult> {
+  return apiFetch<Top10PredictResult>('/api/predict/top10', { method: 'POST' });
 }
