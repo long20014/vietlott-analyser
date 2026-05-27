@@ -177,7 +177,7 @@ export async function crawlPower55(onProgress?: (page: number, total: number) =>
 }
 
 export async function exportResults(results: DrawResult[]): Promise<string> {
-  const output = { results };
+  const output = { totalDraw: results.length, results };
   await fs.writeFile(OUTPUT_FILE, JSON.stringify(output, null, 2), 'utf-8');
   return OUTPUT_FILE;
 }

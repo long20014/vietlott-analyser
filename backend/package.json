@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --exit-child src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "crawl": "ts-node --transpile-only src/scripts/crawl.ts",
+    "analyse": "ts-node --transpile-only src/scripts/analyse.ts"
   },
   "dependencies": {
     "axios": "^1.16.0",
