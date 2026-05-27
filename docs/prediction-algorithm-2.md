@@ -2,7 +2,7 @@
 
 ## Overview
 
-Scores 100,000 weighted 7-number candidates against three statistical dimensions from historical draw data. Returns the top 10 combinations sorted ascending by composite score (rank 10 = most likely).
+Scores 100,000 weighted 7-number candidates against three statistical dimensions from historical draw data. Returns the top 10 combinations sorted descending by composite score (rank 1 = most likely).
 
 ## Scoring Algorithm
 
@@ -14,13 +14,17 @@ score = 0.5 × numberScore + 0.3 × rangeScore + 0.2 × pairScore
 
 ### numberScore (weight 0.5)
 
-Average of each number's historical appearance ratio:
+Numbers most likely to appear are those that **did not appear in the last 5 draws** AND have a **high overall appearance ratio**. Numbers that appeared in any of the last 5 draws contribute 0 to this score.
 
 ```
-numberScore = mean(ratio[n] for n in candidate)
+numberScore = mean(
+  ratio[n]  if n NOT in last-5-draw numbers
+  0         if n appeared in any of the last 5 draws
+  for n in candidate
+)
 ```
 
-Numbers that appear more often historically push this score higher (~0.10–0.15 range per number).
+A candidate with all 7 numbers outside the recent draws scores highest on this dimension.
 
 ### rangeScore (weight 0.3)
 
@@ -53,12 +57,13 @@ Historical data: ~56.9% of draws contain ≥1 consecutive pair; ~55.3% contain �
 
 ## Candidate Generation
 
-1. Build base weights from `numberStats` (historical ratios, no recency decay)
-2. Run 100,000 weighted roulette samples using `weightedSampleWithoutReplacement`
-3. Deduplicate by sorted comma-joined key
-4. Score every unique candidate with the composite formula above
-5. Sort all candidates descending by score, take top 10
-6. Re-sort ascending before output (rank 1 = lowest score, rank 10 = best)
+1. Read last 5 draws from `power-55-result.json`, build `recentNumbers` set
+2. Build base weights from `numberStats`: numbers in `recentNumbers` get `ratio × 0.1`, others get full `ratio`
+3. Seed PRNG with `analysis.totalDraws` (deterministic — same data = same result every call)
+4. Run 100,000 weighted roulette samples using `weightedSampleWithoutReplacement`
+5. Deduplicate by sorted comma-joined key
+6. Score every unique candidate with the composite formula above
+7. Sort descending by score, take top 10 (rank 1 = highest score = most likely)
 
 ## API
 
