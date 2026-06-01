@@ -1195,6 +1195,16 @@
   },
   "combinedStats": [
     {
+      "label": "Has consecutive pair",
+      "count": 590,
+      "ratio": 0.43703703703703706
+    },
+    {
+      "label": "Has pseudo pair",
+      "count": 600,
+      "ratio": 0.4444444444444444
+    },
+    {
       "label": "Has consecutive pair only",
       "count": 366,
       "ratio": 0.27111111111111114

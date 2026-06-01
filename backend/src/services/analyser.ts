@@ -180,12 +180,16 @@ function buildCombinedStats(results: DrawResult[]): CombinedPairStat[] {
     else if (hasPseudo) pseudoOnly++;
   }
 
+  const hasConsecutive = consecutiveOnly + both;
+  const hasPseudo = pseudoOnly + both;
   const either = consecutiveOnly + pseudoOnly + both;
   return [
+    { label: 'Has consecutive pair',              count: hasConsecutive,  ratio: total > 0 ? hasConsecutive / total : 0 },
+    { label: 'Has pseudo pair',                   count: hasPseudo,       ratio: total > 0 ? hasPseudo / total : 0 },
     { label: 'Has consecutive pair only',         count: consecutiveOnly, ratio: total > 0 ? consecutiveOnly / total : 0 },
-    { label: 'Has pseudo pair only',               count: pseudoOnly,      ratio: total > 0 ? pseudoOnly / total : 0 },
-    { label: 'Has both',                           count: both,            ratio: total > 0 ? both / total : 0 },
-    { label: 'Has either (consecutive or pseudo)', count: either,          ratio: total > 0 ? either / total : 0 },
+    { label: 'Has pseudo pair only',              count: pseudoOnly,      ratio: total > 0 ? pseudoOnly / total : 0 },
+    { label: 'Has both',                          count: both,            ratio: total > 0 ? both / total : 0 },
+    { label: 'Has either (consecutive or pseudo)',count: either,          ratio: total > 0 ? either / total : 0 },
   ];
 }
 
