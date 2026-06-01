@@ -73,9 +73,8 @@ function scoreCombination(
   ratioByNumber: Map<number, number>,
   ratioByConsecPair: Map<string, number>,
   ratioByPseudoPair: Map<string, number>,
-  recentNumbers: Set<number>,
 ): PredictionCandidate {
-  const numberScore = numbers.reduce((sum, n) => sum + (recentNumbers.has(n) ? 0 : (ratioByNumber.get(n) ?? 0)), 0) / numbers.length;
+  const numberScore = numbers.reduce((sum, n) => sum + (ratioByNumber.get(n) ?? 0), 0) / numbers.length;
 
   let rangeSum = 0;
   const rangesCovered: string[] = [];
@@ -103,7 +102,7 @@ function scoreCombination(
     pseudoPairs.reduce((s, [a, b]) => s + (ratioByPseudoPair.get(`${a}-${b}`) ?? 0), 0);
   const pairScore = consecBonus + pseudoBonus + pairStrength;
 
-  const score = 0.5 * numberScore + 0.3 * rangeScore + 0.2 * pairScore;
+  const score = 0.4 * numberScore + 0.35 * rangeScore + 0.25 * pairScore;
 
   return {
     numbers: [...numbers].sort((a, b) => a - b),
@@ -117,11 +116,19 @@ function scoreCombination(
   };
 }
 
+function drawHasPair(numbers: number[]): boolean {
+  const s = new Set(numbers);
+  for (let n = 1; n <= 54; n++) if (s.has(n) && s.has(n + 1)) return true;
+  for (let n = 1; n <= 53; n++) if (s.has(n) && s.has(n + 2)) return true;
+  return false;
+}
+
 export function generateTop10Predictions(
   analysis: AnalyseResult,
-  recentNumbers: Set<number>,
   last2Numbers: Set<number>,
+  last4Draws: number[][],
 ): Top10PredictResult {
+  const last4AllHavePairs = last4Draws.every(drawHasPair);
   const ratioByNumber = new Map<number, number>(
     analysis.numberStats.map(({ number, ratio }) => [number, ratio]),
   );
@@ -134,7 +141,7 @@ export function generateTop10Predictions(
   const baseWeights = new Map<number, number>(
     analysis.numberStats.map(({ number, ratio }) => {
       if (number >= 50 && last2Numbers.has(number)) return [number, 0];
-      return [number, recentNumbers.has(number) ? ratio * 0.1 : ratio];
+      return [number, ratio];
     }),
   );
 
@@ -149,8 +156,8 @@ export function generateTop10Predictions(
     let pairCount = 0;
     for (let n = 1; n <= 54; n++) if (set.has(n) && set.has(n + 1)) pairCount++;
     for (let n = 1; n <= 53; n++) if (set.has(n) && set.has(n + 2)) pairCount++;
-    if (pairCount > 2) continue;
-    seen.set(key, scoreCombination(nums, analysis, ratioByNumber, ratioByConsecPair, ratioByPseudoPair, recentNumbers));
+    if ((!last4AllHavePairs && pairCount === 0) || pairCount > 2) continue;
+    seen.set(key, scoreCombination(nums, analysis, ratioByNumber, ratioByConsecPair, ratioByPseudoPair));
   }
 
 
@@ -168,9 +175,9 @@ export async function exportTop10Predictions(): Promise<Top10PredictResult> {
   ]);
   const analysis = JSON.parse(analyseRaw) as AnalyseResult;
   const { results } = JSON.parse(resultsRaw) as { results: { numbers: number[] }[] };
-  const recentNumbers = new Set(results.slice(0, 5).flatMap((r) => r.numbers));
   const last2Numbers = new Set(results.slice(0, 2).flatMap((r) => r.numbers));
-  const result = generateTop10Predictions(analysis, recentNumbers, last2Numbers);
+  const last4Draws = results.slice(0, 4).map((r) => r.numbers);
+  const result = generateTop10Predictions(analysis, last2Numbers, last4Draws);
   await fs.mkdir(path.dirname(TOP10_FILE), { recursive: true });
   await fs.writeFile(TOP10_FILE, JSON.stringify(result, null, 2), 'utf-8');
   return result;
