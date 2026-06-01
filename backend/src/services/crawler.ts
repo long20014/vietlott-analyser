@@ -35,6 +35,7 @@ const USER_AGENT =
 
 export interface DrawResult {
   numbers: number[];
+  extraNumber: number;
   date: string;
 }
 
@@ -78,7 +79,7 @@ async function fetchPage(pageIndex: number, cookies: string): Promise<{ results:
   $('tbody tr').each((_, row) => {
     const tds = $(row).find('td');
     const dateRaw = $(tds[0]).text().trim(); // DD/MM/YYYY
-    const numbers = $(tds[2])
+    const raw = $(tds[2])
       .find('span')
       .filter((_, el) => {
         const cls = $(el).attr('class') ?? '';
@@ -88,11 +89,11 @@ async function fetchPage(pageIndex: number, cookies: string): Promise<{ results:
       .get()
       .filter((n) => !isNaN(n));
 
-    if (dateRaw && numbers.length === 7) {
-      results.push({
-        numbers: [...numbers].sort((a, b) => a - b),
-        date: dateRaw,
-      });
+    if (dateRaw && raw.length === 7) {
+      // First 6 numbers are main draw numbers, last one is the extra/power number
+      const numbers = [...raw.slice(0, 6)].sort((a, b) => a - b);
+      const extraNumber = raw[6];
+      results.push({ numbers, extraNumber, date: dateRaw });
     }
   });
 
@@ -128,8 +129,11 @@ async function loadExisting(): Promise<DrawResult[]> {
   }
 }
 
-export async function crawlPower55(onProgress?: (page: number, total: number) => void): Promise<{ results: DrawResult[]; newCount: number }> {
-  const existing = await loadExisting();
+export async function crawlPower55(
+  onProgress?: (page: number, total: number) => void,
+  options: { full?: boolean } = {},
+): Promise<{ results: DrawResult[]; newCount: number }> {
+  const existing = options.full ? [] : await loadExisting();
 
   // Results are sorted newest-first, so index 0 is the latest date
   const latestKey = existing.length > 0 ? dateToSortKey(existing[0].date) : 0;

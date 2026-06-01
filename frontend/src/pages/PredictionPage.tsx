@@ -58,7 +58,7 @@ export default function PredictionPage() {
                   <tr key={draw.date} className="hover:bg-gray-50">
                     <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">{draw.date}</td>
                     <td className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 items-center">
                         {draw.numbers.map((n) => (
                           <span
                             key={n}
@@ -67,6 +67,10 @@ export default function PredictionPage() {
                             {n}
                           </span>
                         ))}
+                        <span className="text-gray-400 text-xs mx-0.5">+</span>
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-400 text-white font-bold text-sm">
+                          {draw.extraNumber}
+                        </span>
                       </div>
                     </td>
                   </tr>

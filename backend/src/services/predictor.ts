@@ -96,12 +96,8 @@ function scoreCombination(
     if (set.has(n) && set.has(n + 2)) pseudoPairs.push([n, n + 2]);
   }
 
-  const consecBonus = consecutivePairs.length > 0
-    ? analysis.consecutiveSummary.drawsWithPairRatio
-    : 1 - analysis.consecutiveSummary.drawsWithPairRatio;
-  const pseudoBonus = pseudoPairs.length > 0
-    ? analysis.pseudoSummary.drawsWithPairRatio
-    : 1 - analysis.pseudoSummary.drawsWithPairRatio;
+  const consecBonus = consecutivePairs.length > 0 ? analysis.consecutiveSummary.drawsWithPairRatio : 0;
+  const pseudoBonus = pseudoPairs.length > 0 ? analysis.pseudoSummary.drawsWithPairRatio : 0;
   const pairStrength =
     consecutivePairs.reduce((s, [a, b]) => s + (ratioByConsecPair.get(`${a}-${b}`) ?? 0), 0) +
     pseudoPairs.reduce((s, [a, b]) => s + (ratioByPseudoPair.get(`${a}-${b}`) ?? 0), 0);
@@ -121,7 +117,11 @@ function scoreCombination(
   };
 }
 
-export function generateTop10Predictions(analysis: AnalyseResult, recentNumbers: Set<number>): Top10PredictResult {
+export function generateTop10Predictions(
+  analysis: AnalyseResult,
+  recentNumbers: Set<number>,
+  last2Numbers: Set<number>,
+): Top10PredictResult {
   const ratioByNumber = new Map<number, number>(
     analysis.numberStats.map(({ number, ratio }) => [number, ratio]),
   );
@@ -132,20 +132,27 @@ export function generateTop10Predictions(analysis: AnalyseResult, recentNumbers:
     analysis.pseudoStats.map(({ pair, ratio }) => [`${pair[0]}-${pair[1]}`, ratio]),
   );
   const baseWeights = new Map<number, number>(
-    analysis.numberStats.map(({ number, ratio }) => [
-      number,
-      recentNumbers.has(number) ? ratio * 0.1 : ratio,
-    ]),
+    analysis.numberStats.map(({ number, ratio }) => {
+      if (number >= 50 && last2Numbers.has(number)) return [number, 0];
+      return [number, recentNumbers.has(number) ? ratio * 0.1 : ratio];
+    }),
   );
 
   const rand = mulberry32(analysis.totalDraws);
   const seen = new Map<string, PredictionCandidate>();
   for (let i = 0; i < 100_000; i++) {
-    const nums = weightedSampleWithoutReplacement(baseWeights, 7, rand);
-    const key = [...nums].sort((a, b) => a - b).join(',');
+    const nums = weightedSampleWithoutReplacement(baseWeights, 6, rand);
+    const sorted = [...nums].sort((a, b) => a - b);
+    const key = sorted.join(',');
     if (seen.has(key)) continue;
+    const set = new Set(sorted);
+    let pairCount = 0;
+    for (let n = 1; n <= 54; n++) if (set.has(n) && set.has(n + 1)) pairCount++;
+    for (let n = 1; n <= 53; n++) if (set.has(n) && set.has(n + 2)) pairCount++;
+    if (pairCount > 2) continue;
     seen.set(key, scoreCombination(nums, analysis, ratioByNumber, ratioByConsecPair, ratioByPseudoPair, recentNumbers));
   }
+
 
   const top10 = [...seen.values()]
     .sort((a, b) => b.score - a.score)
@@ -162,7 +169,8 @@ export async function exportTop10Predictions(): Promise<Top10PredictResult> {
   const analysis = JSON.parse(analyseRaw) as AnalyseResult;
   const { results } = JSON.parse(resultsRaw) as { results: { numbers: number[] }[] };
   const recentNumbers = new Set(results.slice(0, 5).flatMap((r) => r.numbers));
-  const result = generateTop10Predictions(analysis, recentNumbers);
+  const last2Numbers = new Set(results.slice(0, 2).flatMap((r) => r.numbers));
+  const result = generateTop10Predictions(analysis, recentNumbers, last2Numbers);
   await fs.mkdir(path.dirname(TOP10_FILE), { recursive: true });
   await fs.writeFile(TOP10_FILE, JSON.stringify(result, null, 2), 'utf-8');
   return result;

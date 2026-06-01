@@ -1,5 +1,6 @@
 export interface DrawResult {
   numbers: number[];
+  extraNumber: number;
   date: string;
 }
 

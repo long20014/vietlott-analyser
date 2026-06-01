@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "crawl": "ts-node --transpile-only src/scripts/crawl.ts",
+    "crawl:full": "ts-node --transpile-only src/scripts/crawl.ts --full",
     "analyse": "ts-node --transpile-only src/scripts/analyse.ts"
   },
   "dependencies": {
