@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import AnalyzePage from './pages/AnalyzePage'
+import PredictionPage from './pages/PredictionPage'
 import './App.css'
 
 function App() {
@@ -16,6 +17,14 @@ function App() {
           >
             Analyze
           </NavLink>
+          <NavLink
+            to="/prediction"
+            className={({ isActive }) =>
+              isActive ? 'text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-800'
+            }
+          >
+            Prediction
+          </NavLink>
         </nav>
 
         <Routes>
@@ -28,6 +37,7 @@ function App() {
             }
           />
           <Route path="/analyze" element={<AnalyzePage />} />
+          <Route path="/prediction" element={<PredictionPage />} />
         </Routes>
       </div>
     </BrowserRouter>

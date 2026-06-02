@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { crawlPower55, exportResults } from '../services/crawler';
+import { analyseResults, exportAnalysis } from '../services/analyser';
+import { exportTop10Predictions } from '../services/predictor';
 
 const DATA_FILE = path.resolve(__dirname, '../../data/power-55-result.json');
 
@@ -18,6 +20,40 @@ router.get('/results', async (_req: Request, res: Response) => {
     res.json(JSON.parse(raw));
   } catch {
     res.status(404).json({ error: 'Data file not found. Run /api/crawl first.' });
+  }
+});
+
+// GET /api/analyse — compute and return analysis of all draw results
+router.get('/analyse', async (_req: Request, res: Response) => {
+  try {
+    const raw = await fs.readFile(DATA_FILE, 'utf-8');
+    const { results } = JSON.parse(raw);
+    res.json(analyseResults(results));
+  } catch {
+    res.status(404).json({ error: 'Data file not found. Run /api/crawl first.' });
+  }
+});
+
+// POST /api/analyse/export — run analysis and export result to power-55-analyse.json
+router.post('/analyse/export', async (_req: Request, res: Response) => {
+  try {
+    const { file, totalDraws } = await exportAnalysis();
+    res.json({ success: true, file, totalDraws });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+
+// POST /api/predict/top10 — score 100k candidates and return top 10 by composite score
+router.post('/predict/top10', async (_req: Request, res: Response) => {
+  try {
+    const result = await exportTop10Predictions();
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
