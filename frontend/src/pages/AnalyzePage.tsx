@@ -22,11 +22,17 @@ export default function AnalyzePage() {
   const [sortKey, setSortKey] = useState<keyof NumberStat>('number');
   const [sortAsc, setSortAsc] = useState(true);
 
+  const [rSortKey, setRsortKey] = useState<'label' | 'count' | 'ratio'>('label');
+  const [rSortAsc, setRsortAsc] = useState(true);
+
   const [cSortKey, setCsortKey] = useState<'pair' | 'count' | 'ratio'>('pair');
   const [cSortAsc, setCsortAsc] = useState(true);
 
   const [pSortKey, setPsortKey] = useState<'pair' | 'count' | 'ratio'>('pair');
   const [pSortAsc, setPsortAsc] = useState(true);
+
+  const [combSortKey, setCombSortKey] = useState<'label' | 'count' | 'ratio'>('label');
+  const [combSortAsc, setCombSortAsc] = useState(true);
 
   useEffect(() => {
     getAnalysis()
@@ -40,6 +46,11 @@ export default function AnalyzePage() {
     else { setSortKey(key); setSortAsc(key === 'number'); }
   }
 
+  function handleRSort(key: typeof rSortKey) {
+    if (rSortKey === key) setRsortAsc((prev) => !prev);
+    else { setRsortKey(key); setRsortAsc(key === 'label'); }
+  }
+
   function handleCSort(key: typeof cSortKey) {
     if (cSortKey === key) setCsortAsc((prev) => !prev);
     else { setCsortKey(key); setCsortAsc(key === 'pair'); }
@@ -50,9 +61,19 @@ export default function AnalyzePage() {
     else { setPsortKey(key); setPsortAsc(key === 'pair'); }
   }
 
+  function handleCombSort(key: typeof combSortKey) {
+    if (combSortKey === key) setCombSortAsc((prev) => !prev);
+    else { setCombSortKey(key); setCombSortAsc(key === 'label'); }
+  }
+
   function arrow(key: keyof NumberStat) {
     if (sortKey !== key) return '';
     return sortAsc ? ' ▲' : ' ▼';
+  }
+
+  function rArrow(key: typeof rSortKey) {
+    if (rSortKey !== key) return '';
+    return rSortAsc ? ' ▲' : ' ▼';
   }
 
   function cArrow(key: typeof cSortKey) {
@@ -63,6 +84,11 @@ export default function AnalyzePage() {
   function pArrow(key: typeof pSortKey) {
     if (pSortKey !== key) return '';
     return pSortAsc ? ' ▲' : ' ▼';
+  }
+
+  function combArrow(key: typeof combSortKey) {
+    if (combSortKey !== key) return '';
+    return combSortAsc ? ' ▲' : ' ▼';
   }
 
   function sortPairStats(stats: ConsecutiveStat[], key: 'pair' | 'count' | 'ratio', asc: boolean) {
@@ -93,10 +119,20 @@ export default function AnalyzePage() {
     return sortAsc ? diff : -diff;
   });
 
+  const rSorted = [...data.rangeStats].sort((a, b) => {
+    const diff = rSortKey === 'label' ? a.label.localeCompare(b.label) : a[rSortKey] - b[rSortKey];
+    return rSortAsc ? diff : -diff;
+  });
+
   const cSorted = sortPairStats(data.consecutiveStats, cSortKey, cSortAsc);
   const pSorted = sortPairStats(data.pseudoStats, pSortKey, pSortAsc);
 
-  const { totalDraws, rangeStats, consecutiveSummary, pseudoSummary, combinedStats } = data;
+  const combSorted = [...data.combinedStats].sort((a, b) => {
+    const diff = combSortKey === 'label' ? a.label.localeCompare(b.label) : a[combSortKey] - b[combSortKey];
+    return combSortAsc ? diff : -diff;
+  });
+
+  const { totalDraws, consecutiveSummary, pseudoSummary } = data;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -128,14 +164,14 @@ export default function AnalyzePage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
                 <tr>
-                  <th className="px-5 py-3">Range</th>
-                  <th className="px-5 py-3">Appearances</th>
-                  <th className="px-5 py-3">Ratio</th>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-gray-100" onClick={() => handleRSort('label')}>Range{rArrow('label')}</th>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-gray-100" onClick={() => handleRSort('count')}>Appearances{rArrow('count')}</th>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-gray-100" onClick={() => handleRSort('ratio')}>Ratio{rArrow('ratio')}</th>
                   <th className="px-5 py-3">Distribution</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {rangeStats.map(({ label, count, ratio }) => (
+                {rSorted.map(({ label, count, ratio }) => (
                   <tr key={label} className="hover:bg-gray-50">
                     <td className="px-5 py-2.5 font-semibold text-gray-800">{label}</td>
                     <td className="px-5 py-2.5 text-gray-700">{count}</td>
@@ -308,14 +344,14 @@ export default function AnalyzePage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
                 <tr>
-                  <th className="px-5 py-3">Type</th>
-                  <th className="px-5 py-3">Draws</th>
-                  <th className="px-5 py-3">Ratio</th>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-gray-100" onClick={() => handleCombSort('label')}>Type{combArrow('label')}</th>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-gray-100" onClick={() => handleCombSort('count')}>Draws{combArrow('count')}</th>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-gray-100" onClick={() => handleCombSort('ratio')}>Ratio{combArrow('ratio')}</th>
                   <th className="px-5 py-3">Distribution</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {combinedStats.map(({ label, count, ratio }) => (
+                {combSorted.map(({ label, count, ratio }) => (
                   <tr key={label} className="hover:bg-gray-50">
                     <td className="px-5 py-2.5 text-gray-800 font-medium">{label}</td>
                     <td className="px-5 py-2.5 text-gray-700">{count}</td>
